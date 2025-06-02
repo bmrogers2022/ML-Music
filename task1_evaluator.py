@@ -51,6 +51,10 @@ def analyze_midi_key_compliance(file_path):
     non_conforming = []
     beat_note_counts = defaultdict(Counter)
     time_signatures = []
+    velocity_per_beat = defaultdict(list)
+    velocity_counts_per_beat = defaultdict(Counter)
+
+
 
     for element in midi_stream.recurse():
         if isinstance(element, meter.TimeSignature):
@@ -65,6 +69,8 @@ def analyze_midi_key_compliance(file_path):
                 non_conforming.append((name, element.offset))
 
             beat_note_counts[beat][name] += 1
+            velocity_per_beat[beat].append(element.volume.velocity or 64)  # MIDI default = 64
+            velocity_counts_per_beat[beat][velocity] += 1
 
     # Print time signature info
     print("\n🕐 Time Signature(s) detected:")
@@ -80,6 +86,49 @@ def analyze_midi_key_compliance(file_path):
             print(f"   - {pitch}: {count}")
 
     plot_notes_by_beat(beat_note_counts)
+
+    plot_velocity_by_beat(velocity_per_beat)
+    plot_velocity_occurrences_by_beat(velocity_counts_per_beat)
+
+
+def plot_velocity_occurrences_by_beat(velocity_counts_per_beat):
+    import matplotlib.pyplot as plt
+
+    beats = sorted(velocity_counts_per_beat.keys())
+    all_velocities = sorted({v for counter in velocity_counts_per_beat.values() for v in counter})
+
+    # Prepare data: rows = velocities, columns = beats
+    data = []
+    for velocity in all_velocities:
+        data.append([velocity_counts_per_beat[beat].get(velocity, 0) for beat in beats])
+
+    # Plot
+    plt.figure(figsize=(12, 6))
+    for i, velocity_data in enumerate(data):
+        plt.plot(beats, velocity_data, label=f"Vel {all_velocities[i]}")
+
+    plt.title("Velocity Occurrence Count by Beat")
+    plt.xlabel("Beat Number in Measure")
+    plt.ylabel("Number of Notes with Velocity")
+    plt.legend(loc="upper right", fontsize="small", ncol=3)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def plot_velocity_by_beat(velocity_per_beat):
+    import matplotlib.pyplot as plt
+
+    beats = sorted(velocity_per_beat.keys())
+    avg_velocities = [sum(velocity_per_beat[b]) / len(velocity_per_beat[b]) for b in beats]
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(beats, avg_velocities, marker='o', color='purple')
+    plt.title("Average Note Velocity by Beat")
+    plt.xlabel("Beat Number in Measure")
+    plt.ylabel("Average Velocity")
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.show()
 
 def plot_notes_by_beat(beat_note_counts):
     import matplotlib.pyplot as plt
