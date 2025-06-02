@@ -1,6 +1,6 @@
 import sys
 from collections import Counter
-from music21 import converter, note, key
+from music21 import converter, note, key, stream, meter
 import matplotlib.pyplot as plt
 
 def analyze_midi_key_compliance(file_path):
