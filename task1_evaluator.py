@@ -47,6 +47,66 @@ def analyze_midi_key_compliance(file_path):
     # Plot note frequency
     plot_note_frequencies(note_names, detected_key)
 
+    note_names = []
+    non_conforming = []
+    beat_note_counts = defaultdict(Counter)
+    time_signatures = []
+
+    for element in midi_stream.recurse():
+        if isinstance(element, meter.TimeSignature):
+            time_signatures.append((element.ratioString, element.offset))
+
+        if isinstance(element, note.Note):
+            name = element.pitch.name
+            beat = round(element.beat, 2)  # round for grouping
+            note_names.append(name)
+
+            if name not in allowed_notes:
+                non_conforming.append((name, element.offset))
+
+            beat_note_counts[beat][name] += 1
+
+    # Print time signature info
+    print("\n🕐 Time Signature(s) detected:")
+    for ts, offset in time_signatures:
+        print(f" - {ts} at offset {offset}")
+
+    # ... [existing compliance and plotting code]
+
+    print("\n📊 Note occurrences per beat position (aggregated):")
+    for beat in sorted(beat_note_counts):
+        print(f" Beat {beat}:")
+        for pitch, count in beat_note_counts[beat].items():
+            print(f"   - {pitch}: {count}")
+
+    plot_notes_by_beat(beat_note_counts)
+
+def plot_notes_by_beat(beat_note_counts):
+    import matplotlib.pyplot as plt
+
+    # Organize data
+    beats = sorted(beat_note_counts.keys())
+    all_pitches = sorted({p for counter in beat_note_counts.values() for p in counter})
+
+    data = []
+    for pitch in all_pitches:
+        data.append([beat_note_counts[beat].get(pitch, 0) for beat in beats])
+
+    # Stack plot
+    plt.figure(figsize=(12, 6))
+    for i, pitch_data in enumerate(data):
+        plt.plot(beats, pitch_data, label=all_pitches[i])
+
+    plt.title("Note Occurrences by Beat Position")
+    plt.xlabel("Beat Number in Measure")
+    plt.ylabel("Occurrences")
+    plt.legend(loc="upper right", fontsize="small", ncol=2)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+    
+
+
 def plot_note_frequencies(note_list, detected_key):
     note_counts = Counter(note_list)
     labels, counts = zip(*sorted(note_counts.items(), key=lambda x: x[0]))
